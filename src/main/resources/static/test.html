@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    123
+    <script>
+        var wsurl = "ws://" + location.host + "/websocket/";
+        console.log(wsurl);
+        var ws = new WebSocket(wsurl);
+
+        ws.onopen = function(evt) {
+            console.log("Connection open ...");
+            ws.send("Hello WebSockets!");
+        };
+
+        ws.onmessage = function(evt) {
+            console.log( "Received Message: " + evt.data);
+        };
+
+        ws.onclose = function(evt) {
+            console.log("Connection closed.");
+        };
+    </script>
+</body>
+</html>
