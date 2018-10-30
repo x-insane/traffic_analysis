@@ -9,17 +9,16 @@
 <body>
     123
     <script>
-        var wsurl = "ws://" + location.host + "/websocket/";
+        var wsurl = (location.protocol.indexOf("s") > -1 ? "wss://" : "ws://") + location.host + "/websocket/";
         console.log(wsurl);
         var ws = new WebSocket(wsurl);
 
         ws.onopen = function(evt) {
             console.log("Connection open ...");
-            ws.send("Hello WebSockets!");
         };
 
         ws.onmessage = function(evt) {
-            console.log( "Received Message: " + evt.data);
+            // console.log( "Received Message: " + evt.data);
         };
 
         ws.onclose = function(evt) {

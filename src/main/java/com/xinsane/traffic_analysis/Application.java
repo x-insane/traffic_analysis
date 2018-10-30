@@ -13,27 +13,28 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.UUID;
+
 
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
-
     private static CaptureThread capture = new CaptureThread();
+    public static int port = 8090;
 
     public static void main(String[] args) throws Exception {
-        int port = 8090;
         if (args.length > 0)
             port = Integer.parseInt(args[0]);
-        startWeb(port);
+        startWeb();
         startCapture();
     }
 
     private static void startCapture() {
         if (!capture.selectNetworkInterfaceByCmd())
             logger.error("select network interface by command line fail.");
-        capture.startCapture();
+        capture.startCapture(UUID.randomUUID().toString().substring(0, 6));
     }
 
-    private static void startWeb(int port) throws Exception {
+    private static void startWeb() throws Exception {
         Server server = new Server(port);
 
         ServletContextHandler handler = new ServletContextHandler(ServletContextHandler.SESSIONS);
