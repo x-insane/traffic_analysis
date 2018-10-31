@@ -1,7 +1,7 @@
 package com.xinsane.traffic_analysis.data.packet;
 
 import com.xinsane.traffic_analysis.Application;
-import com.xinsane.traffic_analysis.data.CaptureThread;
+import com.xinsane.traffic_analysis.data.capture.CaptureThread;
 import com.xinsane.traffic_analysis.data.exception.PacketOfSelfException;
 import org.pcap4j.packet.*;
 
@@ -49,7 +49,7 @@ public abstract class SIpPacket {
     }
 
     private void tcpCallback(IpPacket packet, TcpPacket tcpPacket) {
-        List<InetAddress> addresses = CaptureThread.getAddresses();
+        List<InetAddress> addresses = CaptureThread.getInterface_ips();
         if (addresses != null) {
             // 过滤本应用发出的报文
             if (addresses.contains(packet.getHeader().getSrcAddr()) &&

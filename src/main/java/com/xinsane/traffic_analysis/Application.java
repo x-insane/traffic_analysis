@@ -1,6 +1,6 @@
 package com.xinsane.traffic_analysis;
 
-import com.xinsane.traffic_analysis.data.CaptureThread;
+import com.xinsane.traffic_analysis.data.capture.CaptureThread;
 import com.xinsane.traffic_analysis.web.ShutDownServlet;
 import com.xinsane.traffic_analysis.websocket.WSHandler;
 import org.eclipse.jetty.server.Handler;
@@ -18,7 +18,7 @@ import java.util.UUID;
 
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
-    private static CaptureThread capture = new CaptureThread();
+    private static CaptureThread capture = CaptureThread.getInstance();
     public static int port = 8090;
 
     public static void main(String[] args) throws Exception {

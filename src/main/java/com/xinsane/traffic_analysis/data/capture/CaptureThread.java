@@ -1,6 +1,7 @@
-package com.xinsane.traffic_analysis.data;
+package com.xinsane.traffic_analysis.data.capture;
 
 import com.google.gson.Gson;
+import com.xinsane.traffic_analysis.data.dumper.FixedNumberDumper;
 import com.xinsane.traffic_analysis.data.exception.PacketOfSelfException;
 import com.xinsane.traffic_analysis.data.exception.UnknownPacketException;
 import com.xinsane.traffic_analysis.data.packet.SFrame;
@@ -23,9 +24,15 @@ import java.util.stream.Collectors;
 public class CaptureThread extends Thread implements FixedNumberDumper.FreshHandle {
     private static final Logger logger = LoggerFactory.getLogger(CaptureThread.class);
 
-    private static List<InetAddress> addresses;
-    public static List<InetAddress> getAddresses() {
-        return addresses;
+    private static List<InetAddress> interface_ips;
+    public static List<InetAddress> getInterface_ips() {
+        return interface_ips;
+    }
+
+    private CaptureThread() {}
+    private static CaptureThread instance = new CaptureThread(); // 单例模式
+    public static CaptureThread getInstance() {
+        return instance;
     }
 
     private PcapNetworkInterface nif;
@@ -44,6 +51,10 @@ public class CaptureThread extends Thread implements FixedNumberDumper.FreshHand
         return true;
     }
 
+    public void test() throws PcapNativeException {
+        handle = Pcaps.openOffline("");
+    }
+
     @Override
     public void run() {
         if (nif == null)
@@ -55,21 +66,19 @@ public class CaptureThread extends Thread implements FixedNumberDumper.FreshHand
 
         try {
             handle = nif.openLive(snapLen, mode, timeout);
-            addresses = nif.getAddresses().stream()
+            interface_ips = nif.getAddresses().stream()
                     .map(PcapAddress::getAddress)
                     .collect(Collectors.toList());
             handle.loop(-1, (PacketListener) packet -> {
-                // 控制台输出
-                // System.out.println(handle.getTimestamp());
-                // System.out.println(packet);
-
-                SFrame frame = null;
+                // 解析
+                SFrame frame;
                 try {
                     frame = new SFrame();
                     frame.load(packet);
                 } catch (UnknownPacketException e) {
                     logger.debug("capture an unknown packet.");
                     logger.debug(new Gson().toJson(packet));
+                    frame = null;
                 } catch (PacketOfSelfException e) {
                     return;
                 }
@@ -96,6 +105,32 @@ public class CaptureThread extends Thread implements FixedNumberDumper.FreshHand
         }
     }
 
+    public void startCapture(String captureName) {
+        this.captureName = captureName;
+        start();
+        Runtime.getRuntime().addShutdownHook(new Thread(this::closeDumper));
+    }
+
+    public void stopCapture() {
+        if (handle != null && handle.isOpen()) {
+            try {
+                handle.breakLoop();
+            } catch (NotOpenException e) {
+                e.printStackTrace();
+            }
+        }
+        if (dumper != null)
+            dumper.close();
+    }
+
+    private void closeDumper() {
+        if (dumper != null) {
+            dumper.close();
+            dumper.deleteTmpFiles();
+            dumper = null;
+        }
+    }
+
     @Override
     public PcapHandle getHandle() {
         if (handle != null && handle.isOpen())
@@ -106,23 +141,6 @@ public class CaptureThread extends Thread implements FixedNumberDumper.FreshHand
     @Override
     public String getDumperName() {
         return captureName;
-    }
-
-    public void startCapture(String captureName) {
-        this.captureName = captureName;
-        start();
-    }
-
-    public void stopCapture() {
-        if (handle != null && handle.isOpen()) {
-            try {
-                handle.breakLoop();
-                dumper.close();
-                addresses = null;
-            } catch (NotOpenException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
 }

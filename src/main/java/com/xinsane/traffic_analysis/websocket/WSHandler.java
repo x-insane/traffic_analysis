@@ -1,5 +1,7 @@
 package com.xinsane.traffic_analysis.websocket;
 
+import com.google.gson.Gson;
+import com.xinsane.traffic_analysis.data.capture.CaptureThread;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
 import org.eclipse.jetty.websocket.server.WebSocketHandler;
@@ -31,10 +33,44 @@ public class WSHandler extends WebSocketHandler {
     @OnWebSocketMessage
     public void onMessage(String message) {
         logger.debug("from socket: " + message);
+        Message msg = new Gson().fromJson(message, Message.class);
+        if (msg == null)
+            return;
+        switch (msg.cmd) {
+            case "login":
+                break;
+            case "command":
+                switch (msg.data) {
+                    case "stop_capture":
+                        CaptureThread.getInstance().stopCapture();
+                        break;
+                }
+                break;
+        }
     }
 
     @Override
     public void configure(WebSocketServletFactory factory) {
         factory.register(WSHandler.class);
+    }
+
+    public static class Message {
+        private String cmd, data;
+
+        public String getCmd() {
+            return cmd;
+        }
+
+        public void setCmd(String cmd) {
+            this.cmd = cmd;
+        }
+
+        public String getData() {
+            return data;
+        }
+
+        public void setData(String data) {
+            this.data = data;
+        }
     }
 }
