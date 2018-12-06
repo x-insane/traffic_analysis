@@ -12,25 +12,16 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-public class FixedNumberDumper {
-    private static final Logger logger = LoggerFactory.getLogger(FixedNumberDumper.class);
+public class SliceDumper extends DefaultDumper {
+    private static final Logger logger = LoggerFactory.getLogger(SliceDumper.class);
 
-    private static String dumper_dir = "./dump/";
-    private static int slice_number = 500;
-    public static void config(String dumper_dir, int slice_number) {
-        FixedNumberDumper.dumper_dir = dumper_dir;
-        FixedNumberDumper.slice_number = slice_number;
-    }
-
-    private FreshHandle callback;
-    private PcapDumper mainDumper;
     private PcapDumper dumper;
     private int number = 0;
     private String tmpDir;
     private List<String> filenames = new ArrayList<>();
 
-    public FixedNumberDumper(FreshHandle callback) {
-        this.callback = callback;
+    public SliceDumper(HandlerInformation handler) {
+        super(handler);
         tmpDir = dumper_dir + UUID() + "/"; // 临时文件夹
         File file = new File(tmpDir);
         if (!file.exists())
@@ -39,15 +30,7 @@ public class FixedNumberDumper {
     }
 
     public void addPacket(Packet packet) {
-        try {
-            if (mainDumper == null) {
-                String filename = dumper_dir + callback.getDumperName() + ".pcap";
-                mainDumper = callback.getHandle().dumpOpen(filename);
-            }
-            mainDumper.dump(packet);
-        } catch (NotOpenException | PcapNativeException e) {
-            e.printStackTrace();
-        }
+        super.addPacket(packet);
 
         if (dumper == null || !dumper.isOpen())
             createNewFile();
@@ -64,11 +47,12 @@ public class FixedNumberDumper {
     }
 
     public void close() {
+        super.close();
         if (dumper != null && dumper.isOpen())
             dumper.close();
     }
 
-    public void deleteTmpFiles() {
+    public void clearTmpFiles() {
         for (String filename : filenames) {
             File file = new File(filename);
             if (file.exists()) {
@@ -89,7 +73,7 @@ public class FixedNumberDumper {
         if (dumper != null && dumper.isOpen())
             dumper.close();
         dumper = null;
-        PcapHandle handle = callback.getHandle();
+        PcapHandle handle = handler.getHandle();
         if (handle != null && handle.isOpen()) {
             try {
                 SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -105,10 +89,5 @@ public class FixedNumberDumper {
 
     private String UUID() {
         return UUID.randomUUID().toString();
-    }
-
-    public interface FreshHandle {
-        PcapHandle getHandle();
-        String getDumperName();
     }
 }

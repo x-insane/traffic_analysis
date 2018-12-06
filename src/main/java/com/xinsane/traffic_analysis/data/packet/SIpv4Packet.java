@@ -15,25 +15,26 @@ public class SIpv4Packet extends SIpPacket {
 
     private void loadHeader(IpV4Packet.IpV4Header header) {
         Header h = new Header();
-        h.raw = header.getRawData();
+        // h.raw = header.getRawData();
         h.length = header.getIhl();
         h.typeOfService = header.getTos().value();
         h.totalLength = header.getTotalLength();
-        h.identification = header.getIdentification();
+        h.identification = header.getIdentificationAsInt();
         h.flag = new Header.Flag();
         h.flag.reservedFlag = header.getReservedFlag();
         h.flag.dontFragmentFlag = header.getDontFragmentFlag();
         h.flag.moreFragmentFlag = header.getMoreFragmentFlag();
-        h.fragmentOffset = header.getFragmentOffset();
-        h.ttl = header.getTtl();
+        h.flag.fragmentOffset = header.getFragmentOffset();
+        h.ttl = header.getTtlAsInt();
         h.protocol = header.getProtocol().value();
-        h.headerChecksum = header.getHeaderChecksum();
-        h.src = header.getSrcAddr().toString();
-        h.dst = header.getDstAddr().toString();
-        h.options = header.getOptions().stream()
-                .map(IpV4Packet.IpV4Option::getRawData)
-                .collect(Collectors.toList());
-        h.padding = header.getPadding();
+        h.protocolName = header.getProtocol().name();
+        h.headerChecksum = header.getHeaderChecksum() & 0xffff;
+        h.src = header.getSrcAddr().toString().substring(1);
+        h.dst = header.getDstAddr().toString().substring(1);
+//        h.options = header.getOptions().stream()
+//                .map(IpV4Packet.IpV4Option::getRawData)
+//                .collect(Collectors.toList());
+//        h.padding = header.getPadding();
         this.header = h;
     }
 
@@ -43,12 +44,12 @@ public class SIpv4Packet extends SIpPacket {
         private byte length;
         private byte typeOfService;
         private short totalLength;
-        private short identification;
+        private int identification;
         private Flag flag;
-        private short fragmentOffset;
-        private byte ttl;
+        private int ttl;
         private byte protocol;
-        private short headerChecksum;
+        private String protocolName;
+        private int headerChecksum;
         private String src;
         private String dst;
         private List<byte[]> options;
@@ -58,6 +59,7 @@ public class SIpv4Packet extends SIpPacket {
             private boolean reservedFlag;
             private boolean dontFragmentFlag;
             private boolean moreFragmentFlag;
+            private short fragmentOffset;
 
             public boolean isReservedFlag() {
                 return reservedFlag;
@@ -69,6 +71,10 @@ public class SIpv4Packet extends SIpPacket {
 
             public boolean isMoreFragmentFlag() {
                 return moreFragmentFlag;
+            }
+
+            public short getFragmentOffset() {
+                return fragmentOffset;
             }
         }
 
@@ -92,7 +98,7 @@ public class SIpv4Packet extends SIpPacket {
             return totalLength;
         }
 
-        public short getIdentification() {
+        public int getIdentification() {
             return identification;
         }
 
@@ -100,11 +106,7 @@ public class SIpv4Packet extends SIpPacket {
             return flag;
         }
 
-        public short getFragmentOffset() {
-            return fragmentOffset;
-        }
-
-        public byte getTtl() {
+        public int getTtl() {
             return ttl;
         }
 
@@ -112,7 +114,11 @@ public class SIpv4Packet extends SIpPacket {
             return protocol;
         }
 
-        public short getHeaderChecksum() {
+        public String getProtocolName() {
+            return protocolName;
+        }
+
+        public int getHeaderChecksum() {
             return headerChecksum;
         }
 

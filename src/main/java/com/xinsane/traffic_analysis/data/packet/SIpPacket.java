@@ -1,12 +1,6 @@
 package com.xinsane.traffic_analysis.data.packet;
 
-import com.xinsane.traffic_analysis.Application;
-import com.xinsane.traffic_analysis.data.capture.CaptureThread;
-import com.xinsane.traffic_analysis.data.exception.PacketOfSelfException;
 import org.pcap4j.packet.*;
-
-import java.net.InetAddress;
-import java.util.List;
 
 public abstract class SIpPacket {
     private String type;
@@ -23,7 +17,6 @@ public abstract class SIpPacket {
             TcpPacket tcpPacket = (TcpPacket) payload;
             tcp = new STcpPacket();
             tcp.load(tcpPacket);
-            tcpCallback(packet, tcpPacket);
         } else if (payload instanceof UdpPacket) {
             type = "udp";
             UdpPacket udpPacket = (UdpPacket) payload;
@@ -45,20 +38,6 @@ public abstract class SIpPacket {
                 raw = new SRawPacket();
                 raw.load(payload);
             }
-        }
-    }
-
-    private void tcpCallback(IpPacket packet, TcpPacket tcpPacket) {
-        List<InetAddress> addresses = CaptureThread.getInterface_ips();
-        if (addresses != null) {
-            // 过滤本应用发出的报文
-            if (addresses.contains(packet.getHeader().getSrcAddr()) &&
-                    tcpPacket.getHeader().getSrcPort().value() == Application.port)
-                throw new PacketOfSelfException();
-            // 过滤本应用收到的报文
-            if (addresses.contains(packet.getHeader().getDstAddr()) &&
-                    tcpPacket.getHeader().getDstPort().value() == Application.port)
-                throw new PacketOfSelfException();
         }
     }
 

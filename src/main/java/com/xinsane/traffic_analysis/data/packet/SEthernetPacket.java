@@ -39,7 +39,7 @@ public class SEthernetPacket {
 
     private void loadHeader(EthernetPacket.EthernetHeader header) {
         Header h = new Header();
-        h.raw = header.getRawData();
+        // h.raw = header.getRawData();
         h.type = header.getType().value();
         h.typeName = header.getType().name();
         h.src = header.getSrcAddr().toString();

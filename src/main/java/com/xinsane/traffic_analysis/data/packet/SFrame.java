@@ -7,8 +7,10 @@ import org.pcap4j.packet.Packet;
 public class SFrame {
     private String type;
     private SEthernetPacket ethernet;
+    private int length;
 
     public void load(Packet packet) {
+        length = packet.length();
         if (packet instanceof EthernetPacket) {
             EthernetPacket ethernetPacket = (EthernetPacket) packet;
             type = "ethernet";
@@ -21,8 +23,10 @@ public class SFrame {
     public String getType() {
         return type;
     }
-
     public SEthernetPacket getEthernet() {
         return ethernet;
+    }
+    public int getLength() {
+        return length;
     }
 }

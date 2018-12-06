@@ -20,10 +20,10 @@ public class SUdpPacket {
 
     private void loadHeader(UdpPacket.UdpHeader header) {
         Header h = new Header();
-        h.raw = header.getRawData();
-        h.srcPort = header.getSrcPort().value();
+        // h.raw = header.getRawData();
+        h.srcPort = header.getSrcPort().value() & 0xffff;
         h.srcPortName = header.getSrcPort().name();
-        h.dstPort = header.getDstPort().value();
+        h.dstPort = header.getDstPort().value() & 0xffff;
         h.dstPortName = header.getDstPort().name();
         h.length = header.getLength();
         h.checksum = header.getChecksum();
@@ -32,9 +32,9 @@ public class SUdpPacket {
 
     public static class Header {
         private byte[] raw;
-        private short srcPort;
+        private int srcPort;
         private String srcPortName;
-        private short dstPort;
+        private int dstPort;
         private String dstPortName;
         private short length;
         private short checksum;
@@ -43,7 +43,7 @@ public class SUdpPacket {
             return raw;
         }
 
-        public short getSrcPort() {
+        public int getSrcPort() {
             return srcPort;
         }
 
@@ -51,7 +51,7 @@ public class SUdpPacket {
             return srcPortName;
         }
 
-        public short getDstPort() {
+        public int getDstPort() {
             return dstPort;
         }
 

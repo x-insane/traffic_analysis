@@ -12,14 +12,15 @@ public class SIpv6Packet extends SIpPacket {
 
     private void loadHeader(IpV6Packet.IpV6Header header) {
         Header h = new Header();
-        h.raw = header.getRawData();
+        // h.raw = header.getRawData();
         h.trafficClass = header.getTrafficClass().value();
         h.flowLabel = header.getFlowLabel().value();
         h.payloadLength = header.getPayloadLength();
         h.nextHeader = header.getNextHeader().value();
-        h.hopLimit = header.getHopLimit();
-        h.src = header.getSrcAddr().toString();
-        h.dst = header.getDstAddr().toString();
+        h.nextHeaderName = header.getNextHeader().name();
+        h.hopLimit = header.getHopLimitAsInt();
+        h.src = header.getSrcAddr().toString().substring(1);
+        h.dst = header.getDstAddr().toString().substring(1);
         this.header = h;
     }
 
@@ -30,7 +31,8 @@ public class SIpv6Packet extends SIpPacket {
         private int flowLabel;
         private short payloadLength;
         private byte nextHeader;
-        private byte hopLimit;
+        private String nextHeaderName;
+        private int hopLimit;
         private String src;
         private String dst;
 
@@ -58,7 +60,11 @@ public class SIpv6Packet extends SIpPacket {
             return nextHeader;
         }
 
-        public byte getHopLimit() {
+        public String getNextHeaderName() {
+            return nextHeaderName;
+        }
+
+        public int getHopLimit() {
             return hopLimit;
         }
 

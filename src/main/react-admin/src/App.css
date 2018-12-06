@@ -1,32 +1,95 @@
-.App {
-  text-align: center;
+.ant-layout-content {
+    margin: 25px 40px;
 }
 
-.App-logo {
-  animation: App-logo-spin infinite 20s linear;
-  height: 40vmin;
+@media (max-width: 768px) {
+    .ant-layout-content {
+        margin: 0;
+    }
+    .ant-layout-sider {
+        position: fixed;
+        height: 100vh;
+        z-index: 2;
+    }
+    .page-side-cover {
+        position: fixed;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(192,192,192,.6);
+        z-index: 1;
+    }
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+.ant-layout-sider-zero-width-trigger {
+    top: 12px;
+    transform: translateX(5px);
+    background-color: #fff;
 }
 
-.App-link {
-  color: #61dafb;
+.ant-layout-sider-zero-width-trigger:hover {
+    background-color: #fff;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.ant-layout-sider-zero-width-trigger svg {
+    color: #111;
+}
+
+@media (max-width: 575px) {
+    .ant-collapse-content > .ant-collapse-content-box {
+        padding-left: 30px;
+        padding-right: 30px;
+    }
+}
+
+.global-cover {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(192,192,192,.4);
+    z-index: 1;
+    left: 0;
+    top: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.ant-drawer-body {
+    padding: 5px;
+}
+
+.ant-drawer-content-wrapper {
+    width: 400px!important;
+}
+
+@media (max-width: 500px) {
+    .ant-drawer-content-wrapper {
+        width: 80%!important;
+    }
+}
+
+.anticon-info-circle {
+    cursor: pointer;
+}
+
+@media (max-width: 500px) {
+    .ant-collapse-content > .ant-collapse-content-box {
+        padding: 0;
+    }
+}
+
+.ant-radio-group {
+    width: 100%;
+}
+
+.ant-radio-button-wrapper {
+    height: unset;
+    display: block;
+    margin-bottom: 10px;
+}
+
+@media (max-width: 500px) {
+    .ant-collapse-content > .ant-collapse-content-box {
+        padding: 15px;
+    }
 }

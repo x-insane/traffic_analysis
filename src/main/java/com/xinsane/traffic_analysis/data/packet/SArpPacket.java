@@ -11,35 +11,39 @@ public class SArpPacket {
     public void load(ArpPacket packet) {
         loadHeader(packet.getHeader());
         Packet payload = packet.getPayload();
-        if (payload != null) {
+        raw = SRawPacket.from(payload);
+        if (raw != null)
             type = "raw";
-            raw = new SRawPacket();
-            raw.load(payload);
-        }
     }
 
     private void loadHeader(ArpPacket.ArpHeader header) {
         Header h = new Header();
-        h.raw = header.getRawData();
+        // h.raw = header.getRawData();
         h.hardwareType = header.getHardwareType().value();
+        h.hardwareTypeName = header.getHardwareType().name();
         h.protocolType = header.getProtocolType().value();
+        h.protocolTypeName = header.getProtocolType().name();
         h.hardwareAddressLength = header.getHardwareAddrLength();
         h.protocolAddressLength = header.getProtocolAddrLength();
         h.operation = header.getOperation().value();
+        h.operationName = header.getOperation().name();
         h.srcHardware = header.getSrcHardwareAddr().toString();
-        h.srcProtocol = header.getSrcProtocolAddr().toString();
+        h.srcProtocol = header.getSrcProtocolAddr().toString().substring(1);
         h.dstHardware = header.getDstHardwareAddr().toString();
-        h.dstProtocol = header.getDstProtocolAddr().toString();
+        h.dstProtocol = header.getDstProtocolAddr().toString().substring(1);
         this.header = h;
     }
 
     public static class Header {
         private byte[] raw;
         private short hardwareType;
+        private String hardwareTypeName;
         private short protocolType;
+        private String protocolTypeName;
         private byte hardwareAddressLength;
         private byte protocolAddressLength;
         private short operation;
+        private String operationName;
         private String srcHardware;
         private String srcProtocol;
         private String dstHardware;
@@ -53,8 +57,16 @@ public class SArpPacket {
             return hardwareType;
         }
 
+        public String getHardwareTypeName() {
+            return hardwareTypeName;
+        }
+
         public short getProtocolType() {
             return protocolType;
+        }
+
+        public String getProtocolTypeName() {
+            return protocolTypeName;
         }
 
         public byte getHardwareAddressLength() {
@@ -67,6 +79,10 @@ public class SArpPacket {
 
         public short getOperation() {
             return operation;
+        }
+
+        public String getOperationName() {
+            return operationName;
         }
 
         public String getSrcHardware() {

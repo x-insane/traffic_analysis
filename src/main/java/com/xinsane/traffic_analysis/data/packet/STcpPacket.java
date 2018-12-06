@@ -23,13 +23,13 @@ public class STcpPacket {
 
     private void loadHeader(TcpPacket.TcpHeader header) {
         Header h = new Header();
-        h.raw = header.getRawData();
-        h.srcPort = header.getSrcPort().value();
+        // h.raw = header.getRawData();
+        h.srcPort = header.getSrcPort().value() & 0xffff;
         h.srcPortName = header.getSrcPort().name();
-        h.dstPort = header.getDstPort().value();
+        h.dstPort = header.getDstPort().value() & 0xffff;
         h.dstPortName = header.getDstPort().name();
-        h.sequenceNumber = header.getSequenceNumber();
-        h.acknowledgmentNumber = header.getAcknowledgmentNumber();
+        h.sequenceNumber = header.getSequenceNumberAsLong();
+        h.acknowledgmentNumber = header.getAcknowledgmentNumberAsLong();
         h.dataOffset = header.getDataOffset();
         h.flag = new Header.Flag();
         h.flag.reserved = header.getReserved();
@@ -40,7 +40,7 @@ public class STcpPacket {
         h.flag.syn = header.getSyn();
         h.flag.fin = header.getFin();
         h.window = header.getWindow();
-        h.checksum = header.getChecksum();
+        h.checksum = header.getChecksum() & 0xffff;
         h.urgentPointer = header.getUrgentPointer();
         h.options = header.getOptions().stream()
                 .map(TcpPacket.TcpOption::getRawData)
@@ -51,16 +51,16 @@ public class STcpPacket {
 
     public static class Header {
         private byte[] raw;
-        private short srcPort;
+        private int srcPort;
         private String srcPortName;
-        private short dstPort;
+        private int dstPort;
         private String dstPortName;
-        private int sequenceNumber;
-        private int acknowledgmentNumber;
+        private long sequenceNumber;
+        private long acknowledgmentNumber;
         private byte dataOffset;
         private Flag flag;
         private short window;
-        private short checksum;
+        private int checksum;
         private short urgentPointer;
         private List<byte[]> options;
         private byte[] padding;
@@ -107,7 +107,7 @@ public class STcpPacket {
             return raw;
         }
 
-        public short getSrcPort() {
+        public int getSrcPort() {
             return srcPort;
         }
 
@@ -115,7 +115,7 @@ public class STcpPacket {
             return srcPortName;
         }
 
-        public short getDstPort() {
+        public int getDstPort() {
             return dstPort;
         }
 
@@ -123,11 +123,11 @@ public class STcpPacket {
             return dstPortName;
         }
 
-        public int getSequenceNumber() {
+        public long getSequenceNumber() {
             return sequenceNumber;
         }
 
-        public int getAcknowledgmentNumber() {
+        public long getAcknowledgmentNumber() {
             return acknowledgmentNumber;
         }
 
@@ -143,7 +143,7 @@ public class STcpPacket {
             return window;
         }
 
-        public short getChecksum() {
+        public int getChecksum() {
             return checksum;
         }
 
