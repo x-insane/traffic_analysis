@@ -96,6 +96,11 @@ class CapturePage extends React.Component {
                     action: "hello",
                     data: encrypt(md5(message.seed))
                 }))
+            } else {
+                this.setState({
+                    waiting: false,
+                    error: "密钥错误"
+                })
             }
         } else if (message.action === "verify") {
             if (message.result === true) {

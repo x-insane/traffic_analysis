@@ -31,10 +31,11 @@
       var keyset = /!(.*)!/.exec(location.hash);
       if (keyset) {
         window.key = keyset[1];
-        if (window.sessionStorage)
-          window.sessionStorage.setItem("key", window.key);
         history.replaceState(null, null, location.hash.replace(/!(.*)!/, ""));
-      }
+      } else
+      	window.key = window.key || "";
+      if (window.sessionStorage)
+        window.sessionStorage.setItem("key", window.key);
     </script>
     <div id="root"></div>
     <!--
