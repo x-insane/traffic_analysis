@@ -26,6 +26,7 @@ public class WSHandler extends WebSocketHandler {
     private static final Logger logger = LoggerFactory.getLogger(WSHandler.class);
 
     private Session session = null;
+    private boolean proxyUser = false;
     private boolean validUser = false;
     private String verifySeed = RandomStringHelper.randomString(16);
     private SourceHandler handler = null;
@@ -50,6 +51,10 @@ public class WSHandler extends WebSocketHandler {
         handler = CaptureHandler.getInstance();
         handler.bindWebSocketHandler(this);
         sendVerifyHello();
+        if (session.getUpgradeRequest().getHeader("X-Forwarded-For") != null) {
+            proxyUser = true;
+            sendInfo(AESCryptHelper.encrypt("您正在使用代理访问，为避免循环流量，将不会转发报文详情"));
+        }
     }
 
     @OnWebSocketMessage
@@ -181,8 +186,19 @@ public class WSHandler extends WebSocketHandler {
      */
     public void sendError(String error) {
         Map<String, Object> map = new HashMap<>();
-        map.put("action", "die");
-        map.put("die", error);
+        map.put("action", "error");
+        map.put("error", error);
+        sendString(new Gson().toJson(map));
+    }
+
+    /**
+     * 发送提示消息
+     * @param info 加密的提示消息
+     */
+    private void sendInfo(String info) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "info");
+        map.put("info", info);
         sendString(new Gson().toJson(map));
     }
 
@@ -192,6 +208,9 @@ public class WSHandler extends WebSocketHandler {
      */
     public void sendPacket(String frame) {
         if (!validUser)
+            return;
+        // 为避免循环流量，不向使用代理的用户发送报文详情
+        if (proxyUser)
             return;
         Map<String, Object> map = new HashMap<>();
         map.put("action", "packet");

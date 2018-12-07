@@ -36,7 +36,8 @@ public class Application {
     public static void main(String[] args) {
         try {
             resolveArguments(args);
-            generateKey();
+            if (!no_aes)
+                generateKey();
             createDumpDir();
             startWeb();
         } catch (Exception e) {

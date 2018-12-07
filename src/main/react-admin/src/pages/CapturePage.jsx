@@ -191,6 +191,12 @@ class CapturePage extends React.Component {
                     }
                 ]
             })
+        } else if (message.action === "info") {
+            notification.info({
+                message: "来自服务器的提示",
+                description: decrypt(message.info),
+                duration: null
+            })
         } else if (message.action === "error") {
             notification.error({
                 message: "来自服务器的错误",
@@ -220,9 +226,9 @@ class CapturePage extends React.Component {
     };
 
     initWebSocket = (reconnect) => {
-        // const ws_url = (window.location.protocol.indexOf("s") > -1 ? "wss://" : "ws://")
-        //     + window.location.host + "/websocket/";
-        const ws_url = "ws://" + window.location.hostname + ":12611/websocket/";
+        const ws_url = (window.location.protocol.indexOf("s") > -1 ? "wss://" : "ws://")
+            + window.location.host + "/websocket/";
+        // const ws_url = "ws://" + window.location.hostname + ":12611/websocket/";
         this.ws = new WebSocket(ws_url);
         this.ws.onerror = event => {
             if (!reconnect && this.ws.readyState !== 1) {
