@@ -113,13 +113,17 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
                 IpPacket ipPacket = packet.get(IpPacket.class);
                 TcpPacket tcpPacket = packet.get(TcpPacket.class);
                 if (ipPacket != null && tcpPacket != null) {
+                    InetAddress src_address = ipPacket.getHeader().getSrcAddr();
+                    int src_port = tcpPacket.getHeader().getSrcPort().value();
+                    InetAddress dst_address = ipPacket.getHeader().getDstAddr();
+                    int dst_port = tcpPacket.getHeader().getDstPort().value();
                     // 过滤本应用发出的报文
-                    if (interface_ips.contains(ipPacket.getHeader().getSrcAddr()) &&
-                            tcpPacket.getHeader().getSrcPort().value() == Application.port)
+                    if (interface_ips.contains(src_address) &&
+                            (src_port == Application.http_port || src_port == Application.https_port))
                         return;
                     // 过滤本应用收到的报文
-                    if (interface_ips.contains(ipPacket.getHeader().getDstAddr()) &&
-                            tcpPacket.getHeader().getDstPort().value() == Application.port)
+                    if (interface_ips.contains(dst_address) &&
+                            (dst_port == Application.http_port || dst_port == Application.https_port))
                         return;
                 }
                 handlePacket(packet);

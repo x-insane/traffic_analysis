@@ -1,5 +1,6 @@
 package com.xinsane.traffic_analysis.helper;
 
+import com.xinsane.traffic_analysis.Application;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +35,8 @@ public class AESCryptHelper {
     public static String encrypt(String text) {
         if (text == null || text.isEmpty())
             return "";
+        if (Application.no_aes)
+            return text;
         try {
             Cipher cipher = getCipher(Cipher.ENCRYPT_MODE);
             byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
@@ -49,6 +52,8 @@ public class AESCryptHelper {
     public static String decrypt(String cipherText) {
         if (cipherText == null || cipherText.isEmpty())
             return "";
+        if (Application.no_aes)
+            return cipherText;
         try {
             Cipher cipher = getCipher(Cipher.DECRYPT_MODE);
             byte[] bytes = Base64.getDecoder().decode(cipherText);

@@ -181,8 +181,8 @@ public class WSHandler extends WebSocketHandler {
      */
     public void sendError(String error) {
         Map<String, Object> map = new HashMap<>();
-        map.put("action", "error");
-        map.put("error", error);
+        map.put("action", "die");
+        map.put("die", error);
         sendString(new Gson().toJson(map));
     }
 

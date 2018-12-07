@@ -220,9 +220,9 @@ class CapturePage extends React.Component {
     };
 
     componentDidMount() {
-        const ws_url = (window.location.protocol.indexOf("s") > -1 ? "wss://" : "ws://")
-            + window.location.host + "/websocket/";
-        // const ws_url = "wss://" + window.location.hostname + ":8090/websocket/";
+        // const ws_url = (window.location.protocol.indexOf("s") > -1 ? "wss://" : "ws://")
+        //     + window.location.host + "/websocket/";
+        const ws_url = "ws://" + window.location.hostname + ":12611/websocket/";
         this.ws = new WebSocket(ws_url);
         this.ws.onerror = event => {
             if (this.ws.readyState !== 1) {

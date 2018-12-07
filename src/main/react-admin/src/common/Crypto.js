@@ -5,6 +5,8 @@ const iv = CryptoJS.enc.Hex.parse(window.key.substring(0, 32));
 
 //加密方法
 function encrypt(word) {
+    if (!window.key)
+        return word;
     let encrypted = CryptoJS.AES.encrypt(word, key, {
         iv: iv,
         mode: CryptoJS.mode.CBC,
@@ -17,6 +19,8 @@ window.encrypt = encrypt;
 
 //解密方法
 function decrypt(word) {
+    if (!window.key)
+        return word;
     let decrypted = CryptoJS.AES.decrypt(word, key, {
         iv: iv,
         mode: CryptoJS.mode.CBC,
