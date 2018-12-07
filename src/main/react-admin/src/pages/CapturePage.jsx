@@ -219,13 +219,13 @@ class CapturePage extends React.Component {
         }))
     };
 
-    componentDidMount() {
+    initWebSocket = (reconnect) => {
         // const ws_url = (window.location.protocol.indexOf("s") > -1 ? "wss://" : "ws://")
         //     + window.location.host + "/websocket/";
         const ws_url = "ws://" + window.location.hostname + ":12611/websocket/";
         this.ws = new WebSocket(ws_url);
         this.ws.onerror = event => {
-            if (this.ws.readyState !== 1) {
+            if (!reconnect && this.ws.readyState !== 1) {
                 this.setState({
                     waiting: false,
                     error: "无法连接到服务器"
@@ -235,16 +235,36 @@ class CapturePage extends React.Component {
         this.ws.onopen = () => {
             this.setState({
                 error: null
-            })
+            });
+            this.ws_notification = true;
+            if (reconnect) {
+                notification.success({
+                    message: "已重新连接",
+                    description: "已成功重新连接到服务器",
+                    duration: null,
+                });
+                this.ws_notification = true
+            }
         };
         this.ws.onclose = () => {
-            notification.error({
-                message: "连接已断开",
-                description: "与服务器的连接中断，无法获取新数据",
-                duration: null
-            })
+            if (this.ws_notification) {
+                notification.error({
+                    message: "连接已断开",
+                    description: "与服务器的连接中断，无法获取新数据",
+                    duration: null,
+                    onClose: () => this.ws_notification = true
+                });
+            }
+            this.ws_notification = false;
+            setTimeout(() => {
+                this.initWebSocket(true)
+            }, 1000)
         };
         this.ws.onmessage = this.onMessage;
+    };
+
+    componentDidMount() {
+        this.initWebSocket(false)
     }
 
     componentWillUnmount() {
