@@ -21,21 +21,25 @@ public class AESCryptHelper {
 
     static {
         KeyGenerator generator = null;
-        try {
-            generator = KeyGenerator.getInstance("AES");
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            logger.error("can not generate key: " + e.getMessage());
-            System.exit(-1);
+        SecretKey secretKey = null;
+        if (!Application.no_aes) {
+            try {
+                generator = KeyGenerator.getInstance("AES");
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+                logger.error("can not generate key: " + e.getMessage());
+                System.exit(-1);
+            }
+            generator.init(256);
+            secretKey = generator.generateKey();
         }
-        generator.init(256);
-        key = generator.generateKey();
+        key = secretKey;
     }
 
     public static String encrypt(String text) {
         if (text == null || text.isEmpty())
             return "";
-        if (Application.no_aes)
+        if (key == null)
             return text;
         try {
             Cipher cipher = getCipher(Cipher.ENCRYPT_MODE);
@@ -52,7 +56,7 @@ public class AESCryptHelper {
     public static String decrypt(String cipherText) {
         if (cipherText == null || cipherText.isEmpty())
             return "";
-        if (Application.no_aes)
+        if (key == null)
             return cipherText;
         try {
             Cipher cipher = getCipher(Cipher.DECRYPT_MODE);

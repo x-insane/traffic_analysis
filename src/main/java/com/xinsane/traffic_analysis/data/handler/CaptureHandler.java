@@ -186,8 +186,13 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
     private void sendStatusToAll() {
         String wrappedStatus = wrapCaptureStatus();
         for (WSHandler websocket : websockets) {
-            if (websocket.isOpen())
+            if (websocket.isOpen()) {
                 websocket.sendCaptureStatus(wrappedStatus);
+                if (status == Status.RUNNING)
+                    websocket.sendInfo(AESCryptHelper.encrypt("已开始捕获"));
+                else
+                    websocket.sendInfo(AESCryptHelper.encrypt("已停止捕获"));
+            }
         }
     }
 

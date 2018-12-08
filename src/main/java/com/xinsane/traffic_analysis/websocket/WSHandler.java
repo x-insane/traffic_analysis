@@ -67,7 +67,12 @@ public class WSHandler extends WebSocketHandler {
                 // HELLO报文：客户端
                 // - 取服务器hello消息的seed的hash作为新seed
                 // - msg.data: 新seed的加密后的密文
-                validUser = Objects.equals(AESCryptHelper.encrypt(MD5Helper.md5(verifySeed)), msg.data);
+                String expect = AESCryptHelper.encrypt(MD5Helper.md5(verifySeed));
+                validUser = Objects.equals(expect, msg.data);
+                if (!validUser)
+                    logger.debug("invalid hello: " + msg.data + ", " + expect + " expected.");
+                else
+                    logger.debug("a valid user said hello.");
                 sendVerifyResult();
                 break;
             case "ping": {
@@ -195,7 +200,7 @@ public class WSHandler extends WebSocketHandler {
      * 发送提示消息
      * @param info 加密的提示消息
      */
-    private void sendInfo(String info) {
+    public void sendInfo(String info) {
         Map<String, Object> map = new HashMap<>();
         map.put("action", "info");
         map.put("info", info);

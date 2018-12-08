@@ -3,7 +3,7 @@ import { Layout } from "antd";
 import HeaderLayout from "../layout/HeaderLayout";
 import FooterLayout from "../layout/FooterLayout";
 
-class PacketPage extends React.Component {
+class PacketFilePage extends React.Component {
     render() {
         return <Layout>
             <HeaderLayout text="文件管理" />
@@ -14,4 +14,4 @@ class PacketPage extends React.Component {
     }
 }
 
-export default PacketPage;
+export default PacketFilePage;

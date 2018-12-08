@@ -15,7 +15,12 @@ public class MD5Helper {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             md.update(text.getBytes(StandardCharsets.UTF_8));
-            return new BigInteger(1, md.digest()).toString(16);
+            String result = new BigInteger(1, md.digest()).toString(16);
+            StringBuilder builder = new StringBuilder(32);
+            for (int i = 0; i < 32 - result.length(); ++i)
+                builder.append('0'); // MD5值补足位数
+            builder.append(result);
+            return builder.toString();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
             logger.error(e.getMessage());

@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import { Link, Switch, Redirect, Route, withRouter } from 'react-router-dom';
 import { Layout, Menu, Icon } from 'antd';
 import CapturePage from "../pages/CapturePage";
-import PacketPage from "../pages/PacketPage";
+import PacketFilePage from "../pages/PacketFilePage";
 
 class MainLayout extends Component {
     state = {
@@ -66,7 +66,7 @@ class MainLayout extends Component {
 
                 <Switch>
                     <Route path="/capture" component={CapturePage}/>
-                    <Route path="/packet" component={PacketPage}/>
+                    <Route path="/packet" component={PacketFilePage}/>
                     <Route path='/' render={() => <Redirect to="/capture"/>}/>
                 </Switch>
 
