@@ -21,12 +21,23 @@ class PacketStatistics extends React.Component {
     };
 
     update = (statistics, typeStatistics, ipStatistics) => {
-        this.setState({
+        if (!this.update_timer) {
+            this.update_timer = setTimeout(() => {
+                this.setState(this.updated);
+                this.update_timer = null
+            }, 500)
+        }
+        this.updated = {
             statistics,
             typeStatistics,
             ipStatistics
-        });
+        };
+        this.resize()
+    };
+
+    resize = () => {
         // 修复饼图大小绘制错误
+        // console.log(this.hasResize);
         if (!this.hasResize) {
             this.hasResize = true;
             setTimeout(() => {
@@ -41,7 +52,7 @@ class PacketStatistics extends React.Component {
                         false, window, 0);
                     window.dispatchEvent(evt);
                 }
-            }, 0)
+            }, 500)
         }
     };
 

@@ -21,6 +21,7 @@ class CapturePage extends React.Component {
     };
 
     capture_index = 0;
+    statistics_timer = null;
 
     startCapture = () => {
         this.socket.startCapture(this.capture_index, this.state.filter)
@@ -65,9 +66,13 @@ class CapturePage extends React.Component {
         })
     };
 
-    onStatistics = (statistics, statisticsUpdateTime, typeStatistics, ipStatistics, requestUpdate) => {
-        if (this.state.running === true)
-            setTimeout(requestUpdate, 5000);
+    onStatistics = (statistics, statisticsUpdateTime, typeStatistics, ipStatistics) => {
+        if (this.statistics_timer === null) {
+            this.statistics_timer = setTimeout(() => {
+                this.socket.requestStatistics();
+                this.statistics_timer = null
+            }, 5000)
+        }
         this.setState({
             statisticsUpdateTime
         });
@@ -82,6 +87,7 @@ class CapturePage extends React.Component {
 
     componentDidMount() {
         this.socket = new Socket({
+            type: "capture",
             onConnected: this.onConnected,
             onSocketError: this.onSocketError,
             onCaptureStatus: this.onCaptureStatus,
@@ -92,21 +98,21 @@ class CapturePage extends React.Component {
     }
 
     componentWillUnmount() {
-        if (this.ws) {
-            this.ws.onclose = null;
-            this.ws.close()
-        }
+        if (this.socket)
+            this.socket.close();
+        if (this.statistics_timer)
+            clearTimeout(this.statistics_timer)
     }
 
     render() {
-        let content = null;
+        let waitingMessage = null;
         if (this.state.waiting) {
-            content = <div style={{ textAlign: 'center', marginTop: 10 }}>
+            waitingMessage = <div style={{ textAlign: 'center', marginTop: 10 }}>
                 <Spin/>&nbsp;&nbsp;&nbsp;正在连接服务器
             </div>
         }
         else if (this.state.error) {
-            content = <div style={{ textAlign: 'center', marginTop: 10, color: 'red' }}>
+            waitingMessage = <div style={{ textAlign: 'center', marginTop: 10, color: 'red' }}>
                 <Icon type="exclamation-circle" />&nbsp;&nbsp;&nbsp;{this.state.error}
             </div>
         }
@@ -120,8 +126,11 @@ class CapturePage extends React.Component {
             <HeaderLayout text="实时捕获" />
             <Layout.Content>
                 {
-                    content ? content : <div>
-                        <Collapse defaultActiveKey={['2']}>
+                    waitingMessage ? waitingMessage : <div>
+                        <Collapse defaultActiveKey={['2']} onChange={ e => {
+                            if (e.indexOf("3") > -1)
+                                setTimeout(this.socket.requestStatistics, 500)
+                        }}>
                             <Collapse.Panel header={"捕获信息" +
                                 (!this.state.filter ? "" : " - filter='" + capture_filter + "'")} key="1">
                                 <h3>当前状态</h3>

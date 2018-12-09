@@ -1,6 +1,7 @@
 {
   "name": "react-admin",
   "version": "0.1.0",
+  "proxy": "http://localhost:12611",
   "private": true,
   "dependencies": {
     "@babel/core": "7.1.0",

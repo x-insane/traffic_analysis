@@ -3,11 +3,10 @@ package com.xinsane.traffic_analysis.data.handler;
 import com.google.gson.Gson;
 import com.xinsane.traffic_analysis.Application;
 import com.xinsane.traffic_analysis.data.CaptureInformation;
-import com.xinsane.traffic_analysis.data.dumper.DefaultDumper;
-import com.xinsane.traffic_analysis.data.dumper.Dumper;
 import com.xinsane.traffic_analysis.data.exception.UnknownPacketException;
 import com.xinsane.traffic_analysis.data.packet.SFrame;
 import com.xinsane.traffic_analysis.helper.AESCryptHelper;
+import com.xinsane.traffic_analysis.helper.RandomStringHelper;
 import com.xinsane.traffic_analysis.websocket.WSHandler;
 import org.pcap4j.core.*;
 import org.pcap4j.core.PcapNetworkInterface.PromiscuousMode;
@@ -16,10 +15,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerInformation {
+public class CaptureHandler implements Runnable, SourceHandler {
     private static final Logger logger = LoggerFactory.getLogger(CaptureHandler.class);
 
     // 单例模式
@@ -39,9 +40,9 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
     private PcapNetworkInterface nif;
     private PcapHandle handle;
     private String filter = null;
-    // Packet Dumper
+    // 捕获结果输出
+    private PcapDumper dumper = null;
     private String dumperName = null;
-    private Dumper dumper = null;
     // 捕获详情
     private CaptureInformation information = null;
 
@@ -64,27 +65,7 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
         }
 
         // 类型统计
-        information.count();
-        if (packet.contains(IpPacket.class)) {
-            information.count("ip");
-            if (packet.contains(IpV4Packet.class))
-                information.count("ipv4");
-            else if (packet.contains(IpV6Packet.class))
-                information.count("ipv6");
-            if (packet.contains(TcpPacket.class))
-                information.count("tcp");
-            else if (packet.contains(UdpPacket.class))
-                information.count("udp");
-            if (packet.contains(IcmpV4CommonPacket.class)) {
-                information.count("icmp");
-                information.count("icmpv4");
-            } else if (packet.contains(IcmpV6CommonPacket.class)) {
-                information.count("icmp");
-                information.count("icmpv6");
-            }
-        }
-        else if (packet.contains(ArpPacket.class))
-            information.count("arp");
+        information.count(packet);
 
         // WebSocket
         if (frame != null) {
@@ -95,8 +76,14 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
             }
         }
 
-        // 文件
-        dumper.addPacket(packet);
+        // 保存为文件
+        try {
+            if (dumper != null)
+                dumper.dump(packet);
+        } catch (NotOpenException e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+        }
     }
 
     @Override
@@ -109,6 +96,17 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
                     .collect(Collectors.toList());
             if (filter != null)
                 handle.setFilter(filter, BpfProgram.BpfCompileMode.OPTIMIZE);
+            // 打开输出文件
+            dumperName = new SimpleDateFormat("yyyyMMddHHmmssSSS")
+                    .format(System.currentTimeMillis()) + ".pcap";
+            String filename = Application.dumper_dir + dumperName;
+            try {
+                dumper = handle.dumpOpen(filename);
+            } catch (PcapNativeException | NotOpenException e) {
+                e.printStackTrace();
+                logger.error(e.getMessage());
+            }
+            // 开始循环获取报文
             handle.loop(-1, (PacketListener) packet -> {
                 IpPacket ipPacket = packet.get(IpPacket.class);
                 TcpPacket tcpPacket = packet.get(TcpPacket.class);
@@ -143,11 +141,14 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
 
     private void startCapture() {
         if (thread == null) {
-            initData();
+            // 开始记录统计信息
+            information = new CaptureInformation();
+            information.start();
+            // 启动线程
             thread = new Thread(this);
             thread.setDaemon(true); // 主线程结束后退出
             thread.start();
-            information.start();
+            // 设置运行状态
             status = Status.RUNNING;
         }
         // 向所有在线websocket发送开始捕获消息
@@ -155,6 +156,7 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
     }
 
     public void stopCapture() {
+        // 停止捕获
         if (handle != null && handle.isOpen()) {
             try {
                 handle.breakLoop();
@@ -162,11 +164,15 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
                 e.printStackTrace();
             }
         }
+        // 关闭输出文件
         if (dumper != null)
             dumper.close();
+        // 结束统计信息
         information.stop();
-        status = Status.NONE;
+        // 清理线程
         thread = null;
+        // 设置运行状态
+        status = Status.NONE;
     }
 
     /**
@@ -190,8 +196,10 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
                 websocket.sendCaptureStatus(wrappedStatus);
                 if (status == Status.RUNNING)
                     websocket.sendInfo(AESCryptHelper.encrypt("已开始捕获"));
-                else
-                    websocket.sendInfo(AESCryptHelper.encrypt("已停止捕获"));
+                else {
+                    websocket.sendInfo(AESCryptHelper.encrypt("已停止捕获，已保存为" +
+                            dumperName + "，请在文件管理中查看"));
+                }
             }
         }
     }
@@ -200,16 +208,9 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
         Runtime.getRuntime().addShutdownHook(new Thread(this::closeDumper));
     }
 
-    private void initData() {
-        dumperName = UUID.randomUUID().toString().substring(0, 6);
-        dumper = new DefaultDumper(this);
-        information = new CaptureInformation();
-    }
-
     private void closeDumper() {
         if (dumper != null) {
             dumper.close();
-            dumper.clearTmpFiles();
             dumper = null;
         }
     }
@@ -235,22 +236,18 @@ public class CaptureHandler implements Runnable, SourceHandler, Dumper.HandlerIn
         return information;
     }
 
-    @Override
-    public PcapHandle getHandle() {
-        return handle;
-    }
-
-    @Override
-    public String getDumperName() {
-        return dumperName;
-    }
-
     public Status getStatus() {
         return status;
     }
 
     public String getFilter() {
         return filter;
+    }
+
+    String getDumperName() {
+        if (status == Status.RUNNING)
+            return dumperName;
+        return null;
     }
 
     public enum Status {

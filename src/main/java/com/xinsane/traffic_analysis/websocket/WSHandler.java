@@ -1,7 +1,9 @@
 package com.xinsane.traffic_analysis.websocket;
 
 import com.google.gson.Gson;
+import com.xinsane.traffic_analysis.data.CaptureInformation;
 import com.xinsane.traffic_analysis.data.handler.CaptureHandler;
+import com.xinsane.traffic_analysis.data.handler.PacketFileHandler;
 import com.xinsane.traffic_analysis.data.handler.SourceHandler;
 import com.xinsane.traffic_analysis.helper.AESCryptHelper;
 import com.xinsane.traffic_analysis.helper.MD5Helper;
@@ -38,23 +40,20 @@ public class WSHandler extends WebSocketHandler {
 
     @OnWebSocketClose
     public void onClose(int statusCode, String reason) {
-        logger.error("Websocket Closed.");
+        logger.debug("Websocket Closed.");
+        if (handler instanceof PacketFileHandler)
+            ((PacketFileHandler) handler).unbindFile();
     }
 
     @OnWebSocketError
     public void onError(Throwable t) {
+        logger.error(t.getMessage());
     }
 
     @OnWebSocketConnect
     public void onConnect(Session session) {
         this.session = session;
-        handler = CaptureHandler.getInstance();
-        handler.bindWebSocketHandler(this);
         sendVerifyHello();
-        if (session.getUpgradeRequest().getHeader("X-Forwarded-For") != null) {
-            proxyUser = true;
-            sendInfo(AESCryptHelper.encrypt("您正在使用代理访问，为避免循环流量，将不会转发报文详情"));
-        }
     }
 
     @OnWebSocketMessage
@@ -64,15 +63,30 @@ public class WSHandler extends WebSocketHandler {
             return;
         switch (msg.action) {
             case "hello":
-                // HELLO报文：客户端
+                // HELLO报文：客户端（第二次握手消息）
                 // - 取服务器hello消息的seed的hash作为新seed
                 // - msg.data: 新seed的加密后的密文
+                // - msg.extra.type: 客户端类型，只能取capture或file
                 String expect = AESCryptHelper.encrypt(MD5Helper.md5(verifySeed));
                 validUser = Objects.equals(expect, msg.data);
                 if (!validUser)
                     logger.debug("invalid hello: " + msg.data + ", " + expect + " expected.");
-                else
-                    logger.debug("a valid user said hello.");
+                else {
+                    String type = msg.extra.get("type");
+                    if ("capture".equals(type)) {
+                        handler = CaptureHandler.getInstance();
+                        logger.debug("a valid capture user said hello.");
+                    } else if ("file".equals(type)) {
+                        handler = new PacketFileHandler();
+                        logger.debug("a valid file user said hello.");
+                    }
+                    if (handler != null)
+                        handler.bindWebSocketHandler(this);
+                    if (session.getUpgradeRequest().getHeader("X-Forwarded-For") != null) {
+                        proxyUser = true;
+                        sendInfo(AESCryptHelper.encrypt("您正在使用代理访问，为避免循环流量，将不会转发报文详情"));
+                    }
+                }
                 sendVerifyResult();
                 break;
             case "ping": {
@@ -82,6 +96,8 @@ public class WSHandler extends WebSocketHandler {
                 break;
             }
             case "command": {
+                if (handler == null)
+                    break;
                 String text = AESCryptHelper.decrypt(msg.data);
                 logger.debug("user command: " + text);
                 if (text != null && !text.isEmpty())
@@ -97,6 +113,7 @@ public class WSHandler extends WebSocketHandler {
      */
     private void handleCommand(Command command) {
         switch (command.command) {
+            // 捕获命令
             case "list_interfaces": {
                 try {
                     this.interfaces = Pcaps.findAllDevs();
@@ -121,23 +138,49 @@ public class WSHandler extends WebSocketHandler {
                     sendCaptureStatus(CaptureHandler.getInstance().wrapCaptureStatus());
                     break;
                 }
-                int index = Integer.parseInt(command.extra.get("index"));
-                String filter = command.extra.get("filter");
+                int index = (int) (double) command.extra.get("index");
+                String filter = (String) command.extra.get("filter");
                 CaptureHandler.getInstance().setNetworkInterfaceAndCapture(interfaces.get(index), filter);
                 break;
             }
             case "stop_capture":
                 CaptureHandler.getInstance().stopCapture();
                 break;
-            case "statistics": {
-                Map<String, Object> map = new HashMap<>();
-                map.put("action", "statistics");
-                map.put("statistics", AESCryptHelper.encrypt(new Gson().toJson(handler.getInformation())));
-                map.put("time", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
-                        .format(System.currentTimeMillis()));
-                sendString(new Gson().toJson(map));
+            // 通用命令
+            case "statistics":
+                sendStatistics();
+                break;
+            // 文件管理命令
+            case "list_files":
+                if (handler instanceof PacketFileHandler)
+                    ((PacketFileHandler) handler).listFiles();
+                break;
+            case "delete_files": {
+                if (handler instanceof PacketFileHandler) {
+                    List files = (List) command.extra.get("files");
+                    if (files != null)
+                        ((PacketFileHandler) handler).deleteFiles(files);
+                }
                 break;
             }
+            case "bind_file": {
+                String filename = (String) command.extra.get("filename");
+                String filter = (String) command.extra.get("filter");
+                if (handler instanceof PacketFileHandler)
+                    ((PacketFileHandler) handler).bindFile(filename, filter);
+                break;
+            }
+            case "request_packets": {
+                int start = (int) (double) command.extra.get("start");
+                int number = (int) (double) command.extra.get("number");
+                if (handler instanceof PacketFileHandler)
+                    ((PacketFileHandler) handler).requestPackets(start, number);
+                break;
+            }
+            case "unbind_file":
+                if (handler instanceof PacketFileHandler)
+                    ((PacketFileHandler) handler).unbindFile();
+                break;
         }
     }
 
@@ -149,17 +192,6 @@ public class WSHandler extends WebSocketHandler {
 
     public boolean isOpen() {
         return session != null && session.isOpen();
-    }
-
-    /**
-     * 发送捕获状态信息
-     * @param wrappedStatus 已加密的状态信息
-     */
-    public void sendCaptureStatus(String wrappedStatus) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("action", "status");
-        map.put("data", wrappedStatus);
-        sendString(new Gson().toJson(map));
     }
 
     /**
@@ -208,6 +240,23 @@ public class WSHandler extends WebSocketHandler {
     }
 
     /**
+     * 发送统计信息
+     */
+    public void sendStatistics() {
+        if (handler != null) {
+            CaptureInformation information = handler.getInformation();
+            if (information != null) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("action", "statistics");
+                map.put("statistics", AESCryptHelper.encrypt(new Gson().toJson(information)));
+                map.put("time", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+                        .format(System.currentTimeMillis()));
+                sendString(new Gson().toJson(map));
+            }
+        }
+    }
+
+    /**
      * 发送一个数据报文记录，报文主体需要加密
      * @param frame 经过加密的数据报文记录
      */
@@ -221,6 +270,46 @@ public class WSHandler extends WebSocketHandler {
         map.put("action", "packet");
         map.put("packet", frame);
         map.put("time", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
+        sendString(new Gson().toJson(map));
+    }
+
+    /**
+     * 【仅捕获客户端】发送捕获状态信息
+     * @param wrappedStatus 已加密的状态信息
+     */
+    public void sendCaptureStatus(String wrappedStatus) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "status");
+        map.put("data", wrappedStatus);
+        sendString(new Gson().toJson(map));
+    }
+
+    /**
+     * 【仅文件客户端】发送可查看的文件列表
+     * @param fileListData 加密的文件列表
+     */
+    public void sendFileList(String fileListData) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "file_list");
+        map.put("data", fileListData);
+        sendString(new Gson().toJson(map));
+    }
+
+    /**
+     * 【仅文件客户端】发送指定位置的Packet
+     * @param frame Packet详情
+     * @param time Packet时间戳
+     * @param position Packet位置
+     */
+    public void sendOrderedPacket(String frame, String time, int position) {
+        // 为避免循环流量，不向使用代理的用户发送报文详情
+        if (proxyUser)
+            return;
+        Map<String, Object> map = new HashMap<>();
+        map.put("action", "ordered_packet");
+        map.put("packet", frame);
+        map.put("position", position);
+        map.put("time", time);
         sendString(new Gson().toJson(map));
     }
 
@@ -261,7 +350,7 @@ public class WSHandler extends WebSocketHandler {
 
     private static class Command {
         private String command;
-        private Map<String, String> extra = new HashMap<>();
+        private Map<String, Object> extra = new HashMap<>();
     }
 
     public static class Interface {

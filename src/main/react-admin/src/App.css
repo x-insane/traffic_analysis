@@ -93,3 +93,24 @@
         padding: 15px;
     }
 }
+
+.file-list-header .title {
+    font-size: 18px;
+    margin-right: 15px;
+}
+
+.file-list-header .action {
+    color: #5D90FD;
+    cursor: pointer;
+    margin: 0 5px;
+}
+
+.ant-list .ant-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.ant-list .ant-checkbox-wrapper .ant-checkbox {
+    margin-top: 4px;
+    margin-right: 5px;
+}

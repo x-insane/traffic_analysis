@@ -1,16 +1,17 @@
 package com.xinsane.traffic_analysis;
 
-import com.xinsane.traffic_analysis.data.dumper.Dumper;
 import com.xinsane.traffic_analysis.helper.AESCryptHelper;
 import com.xinsane.traffic_analysis.helper.ArgumentsResolver;
+import com.xinsane.traffic_analysis.servlet.DownloadServlet;
+import com.xinsane.traffic_analysis.servlet.UploadServlet;
 import com.xinsane.traffic_analysis.websocket.WSHandler;
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-import org.eclipse.jetty.server.handler.SecuredRedirectHandler;
 import org.eclipse.jetty.server.handler.gzip.GzipHandler;
+import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,25 +156,35 @@ public class Application {
             server.addConnector(httpsConnector);
         }
 
-        HandlerList handlerList = new HandlerList();
+        HandlerList gzipHandlerList = new HandlerList();
 
         // Resource Handler
         ResourceHandler resourceHandler = new ResourceHandler();
         resourceHandler.setDirectoriesListed(true);
         String resource_path = Application.class.getResource("/static").toString();
         resourceHandler.setResourceBase(resource_path);
-        handlerList.addHandler(resourceHandler);
+        gzipHandlerList.addHandler(resourceHandler);
 
         // WebSocket Handler
         ContextHandler wsHandler = new ContextHandler();
         wsHandler.setContextPath("/websocket");
         wsHandler.setHandler(new WSHandler());
-        handlerList.addHandler(wsHandler);
+        gzipHandlerList.addHandler(wsHandler);
 
         // GZIP Support
         GzipHandler gzip = new GzipHandler();
-        gzip.setHandler(handlerList);
-        server.setHandler(gzip);
+        gzip.setHandler(gzipHandlerList);
+
+        HandlerList handlerList = new HandlerList();
+        handlerList.addHandler(gzip);
+
+        // Servlet Handler
+        ServletContextHandler servletHandler = new ServletContextHandler();
+        servletHandler.addServlet(UploadServlet.class, "/upload");
+        servletHandler.addServlet(DownloadServlet.class, "/download/*");
+        handlerList.addHandler(servletHandler);
+
+        server.setHandler(handlerList);
 
         // Start Server
         server.setStopAtShutdown(true);
@@ -181,7 +192,7 @@ public class Application {
     }
 
     private static void createDumpDir() {
-        File dir = new File(Dumper.dumper_dir);
+        File dir = new File(dumper_dir);
         if (!dir.exists()) {
             if (!dir.mkdirs()) {
                 logger.error("无法创建dump目录！");

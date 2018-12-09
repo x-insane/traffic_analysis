@@ -11,14 +11,28 @@ class PacketDataTable extends React.Component {
         detail: null,
     };
 
+    maxCache = 1000;
     count = 0;
+    loadedCount = 0;
     timer = null;
+    pageSize = 15;
+    page = 1;
+
+    componentDidMount() {
+        if (this.props.pageSize)
+            this.pageSize = this.props.pageSize
+    }
+
+    componentWillUnmount() {
+        if (this.timer)
+            clearTimeout(this.timer)
+    }
 
     onPacket = item => {
         item.key = this.count ++;
         this.state.data.push(item);
-        if (this.count >= 10000)
-            delete this.state.data[this.count-10000];
+        if (this.count >= this.maxCache)
+            delete this.state.data[this.count - this.maxCache];
         if (!this.timer) {
             this.timer = setTimeout(() => {
                 this.forceUpdate();
@@ -27,7 +41,69 @@ class PacketDataTable extends React.Component {
         }
     };
 
+    fillToCount = count => {
+        this.list = this.state.data;
+        const realCount = Math.max(this.count, count);
+        if (count > this.pageSize) {
+            while (this.count < count) {
+                this.list[this.count] = null;
+                delete this.list[this.count++]
+            }
+        }
+        this.count = realCount;
+        this.setState({
+            data: this.list
+        })
+    };
+
+    // clear = () => {
+    //     if (this.timer)
+    //         clearTimeout(this.timer);
+    //     this.timer = null;
+    //     this.count = 0;
+    //     this.loadedCount = 0;
+    //     this.setState({
+    //         data: [],
+    //         detail: null,
+    //     })
+    // };
+
+    onOrderedPacket = (item, index) => {
+        item.key = index;
+        this.list = this.state.data;
+        if (!this.list[index]) {
+            this.list[index] = item;
+            this.loadedCount ++;
+        }
+        if (this.loadedCount > this.maxCache) {
+            let deletePage = 1;
+            while (deletePage === this.page || !this.state.data[deletePage])
+                deletePage ++;
+            deletePage --;
+            for (let i = 0; i < this.pageSize; ++i)
+                delete this.state.data[deletePage * this.pageSize + i];
+        }
+        if (!this.timer) {
+            this.timer = setTimeout(() => {
+                this.setState({
+                    data: this.list
+                });
+                // console.log(this.loadedCount);
+                this.timer = null
+            }, 1000)
+        }
+    };
+
     render() {
+        const filter = this.props.filter === false ? {} : {
+            filters: [
+                { text: "TCP", value: "TCP" },
+                { text: "UDP", value: "UDP" },
+                { text: "ARP", value: "ARP" },
+                { text: "ICMP", value: "ICMP" },
+            ],
+            onFilter: (value, record) => record.type.startsWith(value)
+        };
         return <div>
             <Table dataSource={this.state.data}
                    onRow={
@@ -42,10 +118,18 @@ class PacketDataTable extends React.Component {
                        }
                    }
                    size="small"
-                   pagination={{ pageSize: 15 }}
+                   pagination={{
+                       pageSize: this.pageSize,
+                       onChange: index => {
+                           this.page = index;
+                           if (this.props.onPageChange)
+                               this.props.onPageChange(index)
+                       },
+                       showQuickJumper: true
+                   }}
             >
                 <Column
-                    title="Time"
+                    title="Time/ID"
                     dataIndex="time"
                     key="time"
                     width="20%"
@@ -56,15 +140,7 @@ class PacketDataTable extends React.Component {
                     key="type"
                     width="15%"
                     // 类型筛选
-                    filters={[
-                        { text: "TCP", value: "TCP" },
-                        { text: "UDP", value: "UDP" },
-                        { text: "ARP", value: "ARP" },
-                        { text: "ICMP", value: "ICMP" },
-                    ]}
-                    onFilter={
-                        (value, record) => record.type.startsWith(value)
-                    }
+                    {...filter}
                 />
                 <Column
                     title="Source"
