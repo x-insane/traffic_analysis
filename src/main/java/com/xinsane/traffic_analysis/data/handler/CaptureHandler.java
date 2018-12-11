@@ -6,7 +6,6 @@ import com.xinsane.traffic_analysis.data.CaptureInformation;
 import com.xinsane.traffic_analysis.data.exception.UnknownPacketException;
 import com.xinsane.traffic_analysis.data.packet.SFrame;
 import com.xinsane.traffic_analysis.helper.AESCryptHelper;
-import com.xinsane.traffic_analysis.helper.RandomStringHelper;
 import com.xinsane.traffic_analysis.websocket.WSHandler;
 import org.pcap4j.core.*;
 import org.pcap4j.core.PcapNetworkInterface.PromiscuousMode;
@@ -15,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;

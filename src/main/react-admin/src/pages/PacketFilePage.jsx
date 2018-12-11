@@ -4,7 +4,7 @@ import HeaderLayout from "../layout/HeaderLayout";
 import FooterLayout from "../layout/FooterLayout";
 import Socket from "./components/Socket";
 
-import { encrypt, decrypt } from "../common/Crypto";
+import {encrypt, decrypt, resetKey} from "../common/Crypto";
 import PacketStatistics from "./components/PacketStatistics";
 import PacketDataTable from "./components/PacketDataTable";
 
@@ -23,6 +23,8 @@ class PacketFilePage extends React.Component {
 
     state = {
         waiting: true,
+        key_wrong: false,
+        key: "",
         error: null,
         files: [],
         checkedFiles: [],
@@ -61,12 +63,19 @@ class PacketFilePage extends React.Component {
         this.refreshFileList();
         this.setState({
             waiting: false,
+            key_wrong: false,
             error: null
         })
     };
 
     onReconnected = () => {
         this.refreshFileList()
+    };
+
+    onKeyWrong = () => {
+        this.setState({
+            key_wrong: true
+        })
     };
 
     onSocketError = error => {
@@ -122,16 +131,27 @@ class PacketFilePage extends React.Component {
         }
     };
 
-    componentDidMount() {
+    init = key => {
+        if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+        }
+        if (key)
+            resetKey(key);
         this.socket = new Socket({
             type: "file",
             onConnected: this.onConnected,
+            onKeyWrong: this.onKeyWrong,
             onSocketError: this.onSocketError,
             onStatistics: this.onStatistics,
             onFileList: this.onFileList,
             onReconnected: this.onReconnected,
             onOrderedPacket: this.onOrderedPacket
         })
+    };
+
+    componentDidMount() {
+        this.init()
     }
 
     componentWillUnmount() {
@@ -139,7 +159,53 @@ class PacketFilePage extends React.Component {
             this.socket.close()
     }
 
+    static wrapContent(content) {
+        return <Layout>
+            <HeaderLayout text="文件管理" />
+            <Layout.Content>
+                { content }
+            </Layout.Content>
+            <FooterLayout/>
+        </Layout>
+    }
+
+    inputKeyNode() {
+        return <div>
+            <div style={{
+                textAlign: 'center',
+                marginTop: 10,
+                marginBottom: 20,
+                color: 'red'
+            }}>
+                <Icon type="exclamation-circle"/>&nbsp;&nbsp;&nbsp;请输入正确的密钥
+            </div>
+            <Search
+                placeholder="16进制密钥"
+                enterButton="验证"
+                value={this.state.key}
+                onChange={e => {
+                    this.setState({
+                        key: e.target.value
+                    })
+                }}
+                style={{
+                    maxWidth:'80%',
+                    margin: '0 auto',
+                    display: 'block'
+                }}
+                onSearch={key => {
+                    this.setState({
+                        key: ""
+                    });
+                    this.init(key)
+                }}
+            />
+        </div>
+    }
+
     render() {
+        if (this.state.key_wrong)
+            return PacketFilePage.wrapContent(this.inputKeyNode());
         let waitingMessage = null;
         if (this.state.waiting) {
             waitingMessage = <div style={{ textAlign: 'center', marginTop: 10 }}>
@@ -168,6 +234,7 @@ class PacketFilePage extends React.Component {
             </div>}
             footer={<Upload name="file"
                             action="/upload"
+                            accept=".pcap,application/vnd.tcpdump.pcap"
                             onChange={info => {
                                 if (info.file.status === 'done')
                                     this.onFileUploaded(info.file.response);
@@ -225,48 +292,41 @@ class PacketFilePage extends React.Component {
                 </Row>
             </List.Item>)}
         />;
-        return <Layout>
-            <HeaderLayout text="文件管理" />
-            <Layout.Content>
-            {
-                waitingMessage || <div>
-                {
-                    !this.state.openedFile ? listNode : <div>
-                        <p><Button style={{
-                            marginLeft: window.innerWidth < 768 ? 15 : 0
-                        }} onClick={() => {
-                            this.socket.unbindFile();
-                            this.setState({
-                                openedFile: null
-                            })
-                        }}>关闭</Button></p>
-                        <p style={{
-                            marginLeft: window.innerWidth < 768 ? 15 : 0,
-                            marginRight: window.innerWidth < 768 ? 15 : 0,
-                            marginBottom: 15
-                        }}><Search
-                            placeholder="filter"
-                            enterButton="筛选"
-                            onSearch={filter => {
-                                this.bindFile(this.state.openedFile, filter)
-                            }}
-                        /></p>
-                        <PacketStatistics ref="statistics"/>
-                        <h3 style={{
-                            margin: '25px 0 20px', fontSize: '18px', textAlign: 'center'
-                        }}>数据列表</h3>
-                        <PacketDataTable ref="dataTable"
-                                         key={this.state.openedFile + "-" + this.state.filter}
-                                         filter={false}
-                                         onPageChange={this.onPageChange}
-                                         pageSize={this.pageSize}/>
-                    </div>
-                }
-                </div>
-            }
-            </Layout.Content>
-            <FooterLayout />
-        </Layout>
+        return PacketFilePage.wrapContent(waitingMessage || <div>
+        {
+            !this.state.openedFile ? listNode : <div>
+                <p><Button style={{
+                    marginLeft: window.innerWidth < 768 ? 15 : 0,
+                    marginTop: window.innerWidth < 768 ? 15 : 0
+                }} onClick={() => {
+                    this.socket.unbindFile();
+                    this.setState({
+                        openedFile: null
+                    })
+                }}>关闭</Button></p>
+                <p className="filter-button" style={{
+                    marginLeft: window.innerWidth < 768 ? 15 : 0,
+                    marginRight: window.innerWidth < 768 ? 15 : 0,
+                    marginBottom: 15
+                }}><Search
+                    placeholder="filter"
+                    enterButton="筛选"
+                    onSearch={filter => {
+                        this.bindFile(this.state.openedFile, filter)
+                    }}
+                /></p>
+                <PacketStatistics ref="statistics"/>
+                <h3 style={{
+                    margin: '25px 0 20px', fontSize: '18px', textAlign: 'center'
+                }}>数据列表</h3>
+                <PacketDataTable ref="dataTable"
+                                 key={this.state.openedFile + "-" + this.state.filter}
+                                 filter={false}
+                                 onPageChange={this.onPageChange}
+                                 pageSize={this.pageSize}/>
+            </div>
+        }
+        </div>)
     }
 }
 

@@ -85,9 +85,11 @@ class Socket {
     };
 
     close = () => {
-        this.ws.onclose = null;
-        this.ws.close();
-        this.ws = null
+        if (this.ws) {
+            this.ws.onclose = null;
+            this.ws.close();
+            this.ws = null
+        }
     };
 
     sendCommand = (command, extra) => {
@@ -166,6 +168,14 @@ class Socket {
         }, 1000)
     };
 
+    onKeyWrong = () => {
+        if (this.props.onKeyWrong)
+            this.props.onKeyWrong();
+        else
+            this.onSocketError("密钥错误");
+        this.close()
+    };
+
     onSocketError = error => {
         if (this.props.onSocketError)
             this.props.onSocketError(error)
@@ -199,7 +209,7 @@ class Socket {
                         }
                     }))
                 } else {
-                    this.onSocketError("密钥错误")
+                    this.onKeyWrong()
                 }
                 break;
             case "verify":
@@ -207,7 +217,7 @@ class Socket {
                     if (this.props.onConnected)
                         this.props.onConnected()
                 } else {
-                    this.onSocketError("密钥错误")
+                    this.onKeyWrong()
                 }
                 break;
             case "status":

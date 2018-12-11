@@ -1,7 +1,15 @@
 import CryptoJS from 'crypto-js';
 
-const key = CryptoJS.enc.Hex.parse(window.key);
-const iv = CryptoJS.enc.Hex.parse(window.key.substring(0, 32));
+let key = CryptoJS.enc.Hex.parse(window.key);
+let iv = CryptoJS.enc.Hex.parse(window.key.substring(0, 32));
+
+function resetKey(new_key) {
+    window.key = new_key;
+    key = CryptoJS.enc.Hex.parse(window.key);
+    iv = CryptoJS.enc.Hex.parse(window.key.substring(0, 32));
+    if (window.sessionStorage)
+        window.sessionStorage.setItem("key", window.key);
+}
 
 //加密方法
 function encrypt(word) {
@@ -37,5 +45,6 @@ const md5 = text => CryptoJS.MD5(text).toString();
 export {
     encrypt,
     decrypt,
-    md5
+    md5,
+    resetKey
 };

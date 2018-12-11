@@ -99,9 +99,10 @@ public class WSHandler extends WebSocketHandler {
                 if (handler == null)
                     break;
                 String text = AESCryptHelper.decrypt(msg.data);
-                logger.debug("user command: " + text);
-                if (text != null && !text.isEmpty())
-                    handleCommand(new Gson().fromJson(text, Command.class));
+                if (text != null && !text.isEmpty()) {
+                    Command command = new Gson().fromJson(text, Command.class);
+                    handleCommand(command);
+                }
                 break;
             }
         }
@@ -112,6 +113,8 @@ public class WSHandler extends WebSocketHandler {
      * @param command 经过解密后的控制指令
      */
     private void handleCommand(Command command) {
+        if (!"statistics".equals(command.command))
+            logger.debug("user command: " + command);
         switch (command.command) {
             // 捕获命令
             case "list_interfaces": {
@@ -351,6 +354,11 @@ public class WSHandler extends WebSocketHandler {
     private static class Command {
         private String command;
         private Map<String, Object> extra = new HashMap<>();
+
+        @Override
+        public String toString() {
+            return "{" + "command=" + command + ", extra=" + extra + '}';
+        }
     }
 
     public static class Interface {

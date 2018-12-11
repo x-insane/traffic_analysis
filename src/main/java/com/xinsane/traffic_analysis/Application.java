@@ -31,7 +31,7 @@ public class Application {
     public static String dumper_dir = "./dump/";
     public static int slice_number = 500;
     private static String keystore_path = "./certs/keystore";
-    private static String keystore_password = "";
+    private static String keystore_password = "traffic";
     public static boolean no_aes = false;
 
     public static void main(String[] args) {
@@ -54,7 +54,7 @@ public class Application {
         validOptions.put("dump", "specify the pcap files directory. default ./dump/");
         validOptions.put("slice", "specify how many packets per pcap file in file mode. default 500");
         validOptions.put("keystore", "specify the path of SSL keystore file. default ./certs/keystore");
-        validOptions.put("keystore_pass", "specify the password of SSL keystore file.");
+        validOptions.put("keystore_pass", "specify the password of SSL keystore file. default traffic");
         Map<String, String> validFeatures = new HashMap<>();
         validFeatures.put("no_aes", "data will be transferred without encryption if --no_aes is set");
         config = ArgumentsResolver.resolve(args, validOptions, validFeatures);
@@ -129,11 +129,6 @@ public class Application {
     private static void startWeb() throws Exception {
         Server server = new Server();
 
-        // SSL Context Factory
-        SslContextFactory sslContextFactory = new SslContextFactory();
-        sslContextFactory.setKeyStorePath(keystore_path);
-        sslContextFactory.setKeyStorePassword(keystore_password);
-
         if (http_port > 0) {
             // HTTP Connector
             ServerConnector httpConnector = new ServerConnector(server);
@@ -142,6 +137,11 @@ public class Application {
         }
 
         if (https_port > 0) {
+            // SSL Context Factory
+            SslContextFactory sslContextFactory = new SslContextFactory();
+            sslContextFactory.setKeyStorePath(keystore_path);
+            sslContextFactory.setKeyStorePassword(keystore_password);
+
             // HTTPS Configuration
             HttpConfiguration https_config = new HttpConfiguration();
             https_config.setSecureScheme("https");

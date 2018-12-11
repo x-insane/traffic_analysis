@@ -1,16 +1,21 @@
 import React from "react";
-import { Collapse, Icon, Layout, Spin, Radio, Button, Input } from "antd";
+import {Collapse, Icon, Layout, Spin, Radio, Button, Input} from "antd";
 import HeaderLayout from "../layout/HeaderLayout";
 import FooterLayout from "../layout/FooterLayout";
 import formatDate from '../common/FormatDate.js';
 import PacketDataTable from "./components/PacketDataTable";
 import Socket from "./components/Socket";
 import PacketStatistics from "./components/PacketStatistics";
+import { resetKey } from '../common/Crypto';
+
+const Search = Input.Search;
 
 class CapturePage extends React.Component {
 
     state = {
         waiting: true,
+        key_wrong: false,
+        key: "",
         error: null,
         running: null,
         statisticsUpdateTime: null,
@@ -31,7 +36,14 @@ class CapturePage extends React.Component {
         this.socket.requestCaptureStatus();
         this.setState({
             waiting: false,
+            key_wrong: false,
             error: null
+        })
+    };
+
+    onKeyWrong = () => {
+        this.setState({
+            key_wrong: true
         })
     };
 
@@ -85,16 +97,27 @@ class CapturePage extends React.Component {
             this.refs.dataTable.onPacket(item)
     };
 
-    componentDidMount() {
+    init = key => {
+        if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+        }
+        if (key)
+            resetKey(key);
         this.socket = new Socket({
             type: "capture",
             onConnected: this.onConnected,
+            onKeyWrong: this.onKeyWrong,
             onSocketError: this.onSocketError,
             onCaptureStatus: this.onCaptureStatus,
             onInterfaces: this.onInterfaces,
             onStatistics: this.onStatistics,
             onPacket: this.onPacket
         })
+    };
+
+    componentDidMount() {
+        this.init()
     }
 
     componentWillUnmount() {
@@ -104,16 +127,61 @@ class CapturePage extends React.Component {
             clearTimeout(this.statistics_timer)
     }
 
+    static wrapContent(content) {
+        return <Layout>
+            <HeaderLayout text="实时捕获" />
+            <Layout.Content>
+                { content }
+            </Layout.Content>
+            <FooterLayout/>
+        </Layout>
+    }
+
+    inputKeyNode() {
+        return <div>
+            <div style={{
+                textAlign: 'center',
+                marginTop: 10,
+                marginBottom: 20,
+                color: 'red'
+            }}>
+                <Icon type="exclamation-circle"/>&nbsp;&nbsp;&nbsp;请输入正确的密钥
+            </div>
+            <Search
+                placeholder="16进制密钥"
+                enterButton="验证"
+                value={this.state.key}
+                onChange={e => {
+                    this.setState({
+                        key: e.target.value
+                    })
+                }}
+                style={{
+                    maxWidth:'80%',
+                    margin: '0 auto',
+                    display: 'block'
+                }}
+                onSearch={key => {
+                    this.setState({
+                        key: ""
+                    });
+                    this.init(key)
+                }}
+            />
+        </div>
+    }
+
     render() {
+        if (this.state.key_wrong)
+            return CapturePage.wrapContent(this.inputKeyNode());
         let waitingMessage = null;
         if (this.state.waiting) {
-            waitingMessage = <div style={{ textAlign: 'center', marginTop: 10 }}>
+            waitingMessage = <div style={{textAlign: 'center', marginTop: 10}}>
                 <Spin/>&nbsp;&nbsp;&nbsp;正在连接服务器
             </div>
-        }
-        else if (this.state.error) {
-            waitingMessage = <div style={{ textAlign: 'center', marginTop: 10, color: 'red' }}>
-                <Icon type="exclamation-circle" />&nbsp;&nbsp;&nbsp;{this.state.error}
+        } else if (this.state.error) {
+            waitingMessage = <div style={{textAlign: 'center', marginTop: 10, color: 'red'}}>
+                <Icon type="exclamation-circle"/>&nbsp;&nbsp;&nbsp;{this.state.error}
             </div>
         }
         const statisticsTitle = this.state.statisticsUpdateTime ?
@@ -122,109 +190,101 @@ class CapturePage extends React.Component {
             this.state.running ? "正在捕获" : "未开始捕获"
         );
         const capture_filter = this.state.filter === null ? "未知过滤器" : this.state.filter || "无";
-        return <Layout>
-            <HeaderLayout text="实时捕获" />
-            <Layout.Content>
-                {
-                    waitingMessage ? waitingMessage : <div>
-                        <Collapse defaultActiveKey={['2']} onChange={ e => {
-                            if (e.indexOf("3") > -1)
-                                setTimeout(this.socket.requestStatistics, 500)
+        return CapturePage.wrapContent(waitingMessage ? waitingMessage : <div>
+            <Collapse defaultActiveKey={['2']} onChange={e => {
+                if (e.indexOf("3") > -1)
+                    setTimeout(this.socket.requestStatistics, 500)
+            }}>
+                <Collapse.Panel header={"捕获信息" +
+                (!this.state.filter ? "" : " - filter='" + capture_filter + "'")} key="1">
+                    <h3>当前状态</h3>
+                    <p>{capture_status}</p>
+                    <h3>网卡信息</h3>
+                    {
+                        this.state.running === true && this.state.interface ? <div style={{
+                            marginBottom: '.5em', lineHeight: 1.8
                         }}>
-                            <Collapse.Panel header={"捕获信息" +
-                                (!this.state.filter ? "" : " - filter='" + capture_filter + "'")} key="1">
-                                <h3>当前状态</h3>
-                                <p>{capture_status}</p>
-                                <h3>网卡信息</h3>
-                                {
-                                    this.state.running === true && this.state.interface ? <div style={{
-                                        marginBottom: '.5em', lineHeight: 1.8
-                                    }}>
-                                        <div>Name: {this.state.interface.name}</div>
-                                        <div>Description: {this.state.interface.description}</div>
-                                        <div>IP Addresses:</div>
-                                        {
-                                            this.state.interface.addresses.map((address,i) => <div key={i}>
-                                                &nbsp;&nbsp;&nbsp;&nbsp;{address}
-                                            </div>)
-                                        }
-                                    </div> : <p>未知网卡</p>
-                                }
-                                <h3>过滤器</h3>
-                                <p>{capture_filter}</p>
-                                <h3>开始时间</h3>
-                                <div>
-                                    {
-                                        this.state.running === true && this.state.statistics ?
-                                            formatDate(new Date(this.state.statistics.startTime),
-                                                "yyyy-MM-dd hh:mm:ss.S") : "未开始"
-                                    }
-                                </div>
-                            </Collapse.Panel>
-                            <Collapse.Panel header={"捕获控制 - " + capture_status} key="2">
-                                {
-                                    this.state.running === false && <div>
-                                        <h3>网卡选择&nbsp;&nbsp;
-                                            <Icon type="sync"
-                                                  style={{
-                                                      color: '#00A9FB',
-                                                      cursor: 'pointer'
-                                                  }}
-                                                  onClick={() => {
-                                                this.setState({
-                                                    interfaces: null
-                                                }, this.socket.listInterfaces )
-                                            }
-                                        } /></h3>
-                                        <Radio.Group defaultValue={0} buttonStyle="solid"
-                                                     onChange={e => {
-                                                         this.capture_index = e.target.value
-                                                     }}>
-                                            {
-                                                this.state.interfaces &&
-                                                this.state.interfaces.map((inter, i) => <Radio.Button value={i} key={i}>
-                                                    <div>
-                                                        <div>Name: {inter.name}</div>
-                                                        <div>Description: {inter.description}</div>
-                                                        <div>IP Addresses:</div>
-                                                        {
-                                                            inter.addresses.map((address,i) => <div key={i}>
-                                                                &nbsp;&nbsp;&nbsp;&nbsp;{address}
-                                                            </div>)
-                                                        }
-                                                    </div>
-                                                </Radio.Button>)
-                                            }
-                                        </Radio.Group>
-                                        <h3>可选过滤器</h3>
-                                        <Input defaultValue={this.state.filter} onChange={e => {
-                                            this.setState({
-                                                filter: e.target.value
-                                            })
-                                        }} style={{ marginBottom: 15 }} />
-                                        <Button type="primary" onClick={this.startCapture}>开始捕获</Button>
-                                    </div>
-                                }
-                                {
-                                    this.state.running === true && <div>
-                                        <Button type="primary" onClick={this.socket.stopCapture}>停止捕获</Button>
-                                    </div>
-                                }
-                            </Collapse.Panel>
-                            <Collapse.Panel header={ statisticsTitle } key="3">
-                                <PacketStatistics ref="statistics" />
-                            </Collapse.Panel>
-                        </Collapse>
-
-                        <h3 style={{
-                            margin: '25px 0 20px', fontSize: '18px', textAlign: 'center'
-                        }}>捕获数据 - 只显示新增数据</h3>
-                        <PacketDataTable ref="dataTable" />
+                            <div>Name: {this.state.interface.name}</div>
+                            <div>Description: {this.state.interface.description}</div>
+                            <div>IP Addresses:</div>
+                            {
+                                this.state.interface.addresses.map((address, i) => <div key={i}>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;{address}
+                                </div>)
+                            }
+                        </div> : <p>未知网卡</p>
+                    }
+                    <h3>过滤器</h3>
+                    <p>{capture_filter}</p>
+                    <h3>开始时间</h3>
+                    <div>
+                        {
+                            this.state.running === true && this.state.statistics ?
+                                formatDate(new Date(this.state.statistics.startTime),
+                                    "yyyy-MM-dd hh:mm:ss.S") : "未开始"
+                        }
                     </div>
-                }
-            </Layout.Content>
-            <FooterLayout />
-        </Layout>
+                </Collapse.Panel>
+                <Collapse.Panel header={"捕获控制 - " + capture_status} key="2">
+                    {
+                        this.state.running === false && <div>
+                            <h3>网卡选择&nbsp;&nbsp;
+                                <Icon type="sync"
+                                      style={{
+                                          color: '#00A9FB',
+                                          cursor: 'pointer'
+                                      }}
+                                      onClick={() => {
+                                          this.setState({
+                                              interfaces: null
+                                          }, this.socket.listInterfaces)
+                                      }
+                                      }/></h3>
+                            <Radio.Group defaultValue={0} buttonStyle="solid"
+                                         onChange={e => {
+                                             this.capture_index = e.target.value
+                                         }}>
+                                {
+                                    this.state.interfaces &&
+                                    this.state.interfaces.map((inter, i) => <Radio.Button value={i} key={i}>
+                                        <div>
+                                            <div>Name: {inter.name}</div>
+                                            <div>Description: {inter.description}</div>
+                                            <div>IP Addresses:</div>
+                                            {
+                                                inter.addresses.map((address, i) => <div key={i}>
+                                                    &nbsp;&nbsp;&nbsp;&nbsp;{address}
+                                                </div>)
+                                            }
+                                        </div>
+                                    </Radio.Button>)
+                                }
+                            </Radio.Group>
+                            <h3>可选过滤器</h3>
+                            <Input defaultValue={this.state.filter} onChange={e => {
+                                this.setState({
+                                    filter: e.target.value
+                                })
+                            }} style={{marginBottom: 15}}/>
+                            <Button type="primary" onClick={this.startCapture}>开始捕获</Button>
+                        </div>
+                    }
+                    {
+                        this.state.running === true && <div>
+                            <Button type="primary" onClick={this.socket.stopCapture}>停止捕获</Button>
+                        </div>
+                    }
+                </Collapse.Panel>
+                <Collapse.Panel header={statisticsTitle} key="3">
+                    <PacketStatistics ref="statistics"/>
+                </Collapse.Panel>
+            </Collapse>
+
+            <h3 style={{
+                margin: '25px 0 20px', fontSize: '18px', textAlign: 'center'
+            }}>捕获数据 - 只显示新增数据</h3>
+            <PacketDataTable ref="dataTable"/>
+        </div>)
     }
 }
 
