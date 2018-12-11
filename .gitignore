@@ -4,5 +4,5 @@ _*
 build
 out
 dump
-certs
+./certs
 key.txt

@@ -1,0 +1,15 @@
+# 默认配置
+java -jar traffic_analysis-1.0.jar -http <http_port> -https <https_port>
+
+# 不使用https
+java -jar traffic_analysis-1.0.jar -http <http_port>
+
+# 只使用https
+java -jar traffic_analysis-1.0.jar -https <https_port>
+
+# 不使用AES加密
+java -jar traffic_analysis-1.0.jar -http <http_port> -https <https_port> --no_aes
+
+# 使用自定义证书
+java -jar traffic_analysis-1.0.jar -http <http_port> -https <https_port> -keystore <keystore_file_path> -keystore_pass <keystore_password>
+

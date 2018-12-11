@@ -1,0 +1,5 @@
+keytool -genkey -keyalg RSA -validity 3650 -keystore keystore -alias localhost -ext "san=dns:localhost,ip:127.0.0.1" -dname "CN=localhost, OU=xinsane, O=xinsane, L=Guangdong, ST=Guangzhou, C=CN" -storepass traffic -keypass traffic
+
+keytool -importkeystore -srckeystore keystore -destkeystore keystore.p12 -srcstoretype JKS -deststoretype PKCS12 -srcstorepass traffic -deststorepass traffic
+
+openssl pkcs12 -clcerts -nokeys -out keystore.crt -in keystore.p12 -passin pass:traffic
